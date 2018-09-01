@@ -1,0 +1,77 @@
+            +----------------------+
+            |        OS 211        |
+            |  TASK 0: ALARMCLOCK  |
+            |    DESIGN DOCUMENT   |
+            +----------------------+
+                   
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Jason Tsai	<jt2815@ic.ac.uk>
+FirstName LastName <email@domain.example>
+FirstName LastName <email@domain.example>
+FirstName LastName <email@domain.example>
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, or notes for the
+>> markers, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+                 ALARM CLOCK
+                 ===========
+
+---- DATA STRUCTURES ----
+
+>> A1: (2 marks) 
+>> Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+static struct list slept_list; This keeps track of the threads that have been put to sleep.
+uint64_t ticks_asleep; Keeps track of how many ticks this thread will be asleep for.
+struct list_elem slept_elem; List element for the slept list to keep track of.
+struct semaphore sema; Semaphore for the thread.
+
+---- ALGORITHMS ----
+
+>> A2: (2 marks)
+>> Briefly describe what happens in a call to timer_sleep(),
+>> including the actions performed by the timer interrupt handler 
+>> on each timer tick.
+We assert that interrupts are on for the current state and we check whether the number of ticks that we want to sleep for is positive. We then set the current thread's tick_asleep to the sum of the current ticks passed since boot(timer_ticks) and the ticks parameter. Then we initialize the thread's semaphore. After, we disable interrupts and add the thread's slept_elem to the slept_list. In order to keep the list ordered we then sort it. Lastly, we block the thread with sema_down.
+
+As for the interrupt handler, we increment the ticks and every tick we call thread_tick which runs an external interrupt context. Then in a while loop we iterate through the slept_list, checking whether ticks (number of ticks since boot) is less than the ticks_asleep of the current list element. If it is then we break as it's not time for the thread to wake up yet. If it isn't then we unblock the thread with sema_up and remove the element from the list. Since the list is ordered in ascending ticks_asleep, we only need to check the first one element of the list before breaking.
+
+
+>> A3: (2 marks)
+>> What steps are taken to minimize the amount of time spent in
+>> the timer interrupt handler?
+
+Since the list is ordered in ascending ticks_asleep, we only need to check the first one element of the list before breaking so that we don't have to iterate through the whole list every time the interrupt handler is called.
+
+---- SYNCHRONIZATION ----
+
+>> A4: (1 mark)
+>> How are race conditions avoided when multiple threads call
+>> timer_sleep() simultaneously?
+
+The current thread is the only one that is accessed in timer sleep so race conditions will be avoided.
+
+>> A5: (1 mark)
+>> How are race conditions avoided when a timer interrupt occurs
+>> during a call to timer_sleep()?
+
+In timer_sleep, we disable interrupts for the push onto the slept_list, the sort and the thread block. This makes sure that the list isn't accessed by the interrupt handler.
+
+---- RATIONALE ----
+
+>> A6: (2 marks)
+>> Why did you choose this design?  In what ways is it superior to
+>> another design you considered?
+
+Deciding to add a list of sleeping threads was necessary. Although it would work without it, the while loop in the interrupt handler would have to iterate through all threads which would be massively inefficient. Further narrowing this down, keeping the list ordered was also a good design choice because as previously mentioned we don't have to iterate through all sleeping threads every time.
